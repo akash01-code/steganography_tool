@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Steganography Tool</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#16213e;
+    --header:#0f3460;
+    --accent:#e94560;
+    --ok:#68d391;
+    --muted:#a0aec0;
+    --dim:#4a5568;
+    --text:#e2e8f0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Courier New", Consolas, monospace;
+    min-height:100vh;
+  }
+  header{
+    background:var(--header);
+    padding:22px 16px 16px;
+    text-align:center;
+    border-bottom:2px solid var(--accent);
+  }
+  header h1{
+    margin:0;
+    color:var(--accent);
+    font-size:1.5rem;
+    letter-spacing:1px;
+  }
+  header p{
+    margin:6px 0 0;
+    color:var(--muted);
+    font-size:0.85rem;
+  }
+  nav.tabs{
+    display:flex;
+    justify-content:center;
+    gap:4px;
+    margin:18px auto 0;
+    max-width:920px;
+    padding:0 16px;
+  }
+  nav.tabs button{
+    flex:1;
+    max-width:220px;
+    background:var(--panel);
+    color:var(--muted);
+    border:none;
+    padding:10px 14px;
+    font-family:inherit;
+    font-weight:bold;
+    font-size:0.85rem;
+    cursor:pointer;
+    border-radius:6px 6px 0 0;
+  }
+  nav.tabs button.active{
+    background:var(--header);
+    color:var(--accent);
+  }
+  main{
+    max-width:920px;
+    margin:0 auto;
+    padding:20px 16px 60px;
+  }
+  .panel{
+    display:none;
+    background:var(--panel);
+    border-radius:0 6px 6px 6px;
+    padding:22px;
+  }
+  .panel.active{display:block;}
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+  @media (max-width:700px){
+    .grid{grid-template-columns:1fr;}
+  }
+  .section-label{
+    color:var(--accent);
+    font-weight:bold;
+    font-size:0.8rem;
+    letter-spacing:0.5px;
+    margin:14px 0 6px;
+  }
+  .section-label:first-child{margin-top:0;}
+  .dropzone{
+    border:2px dashed var(--dim);
+    border-radius:6px;
+    padding:22px 12px;
+    text-align:center;
+    cursor:pointer;
+    color:var(--muted);
+    font-size:0.85rem;
+    transition:border-color .15s ease;
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color:var(--accent);
+    color:var(--text);
+  }
+  .dropzone input{display:none;}
+  .filename{
+    margin-top:8px;
+    font-size:0.78rem;
+    color:var(--ok);
+    word-break:break-all;
+  }
+  .capacity{
+    margin-top:6px;
+    font-size:0.78rem;
+    color:var(--muted);
+  }
+  textarea{
+    width:100%;
+    background:var(--bg);
+    color:var(--text);
+    border:1px solid var(--dim);
+    border-radius:6px;
+    padding:10px;
+    font-family:inherit;
+    font-size:0.9rem;
+    resize:vertical;
+    min-height:120px;
+  }
+  textarea:focus, input:focus{outline:1px solid var(--accent);}
+  .counter{
+    text-align:right;
+    font-size:0.75rem;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  button.primary{
+    width:100%;
+    margin-top:16px;
+    background:var(--header);
+    color:var(--text);
+    border:none;
+    border-radius:6px;
+    padding:12px;
+    font-family:inherit;
+    font-weight:bold;
+    font-size:0.9rem;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  button.primary:hover{background:var(--accent);}
+  button.primary:disabled{opacity:0.5;cursor:not-allowed;}
+  .preview{
+    background:var(--bg);
+    border-radius:6px;
+    min-height:220px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:12px;
+  }
+  .preview img{max-width:100%;max-height:260px;border-radius:4px;}
+  .preview .placeholder{color:var(--dim);font-size:0.85rem;}
+  .stats, .message-box{
+    margin-top:12px;
+    font-size:0.8rem;
+    color:var(--ok);
+    white-space:pre-wrap;
+    line-height:1.5;
+  }
+  .error{
+    margin-top:12px;
+    font-size:0.8rem;
+    color:var(--accent);
+  }
+  .download-link{
+    display:inline-block;
+    margin-top:10px;
+    color:var(--ok);
+    text-decoration:underline;
+    font-size:0.82rem;
+  }
+  #decodeOutput{
+    width:100%;
+    min-height:160px;
+    background:var(--bg);
+    color:var(--ok);
+    border:1px solid var(--dim);
+    border-radius:6px;
+    padding:10px;
+    font-family:inherit;
+    font-size:0.9rem;
+    white-space:pre-wrap;
+    overflow-y:auto;
+  }
+  .about{
+    font-size:0.85rem;
+    line-height:1.7;
+    color:var(--text);
+  }
+  .about h3{color:var(--accent);margin-top:20px;}
+  .about code{color:var(--ok);}
+  footer{
+    text-align:center;
+    color:var(--dim);
+    font-size:0.75rem;
+    padding:20px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🕵️ STEGANOGRAPHY TOOL</h1>
+  <p>Hide &amp; Reveal Secret Messages in Images — LSB method</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="encode">🔒 ENCODE</button>
+  <button class="tab-btn" data-tab="decode">🔓 DECODE</button>
+  <button class="tab-btn" data-tab="about">ℹ️ ABOUT</button>
+</nav>
+
+<main>
+
+  <!-- ENCODE PANEL -->
+  <section id="encode" class="panel active">
+    <div class="grid">
+      <div>
+        <div class="section-label">1. SELECT CARRIER IMAGE (PNG)</div>
+        <label class="dropzone" id="encodeDrop">
+          <input type="file" id="encodeFile" accept="image/png,image/*">
+          <div id="encodeDropText">Click or drop a PNG image here</div>
+        </label>
+        <div class="filename" id="encodeFilename"></div>
+        <div class="capacity" id="encodeCapacity"></div>
+
+        <div class="section-label">2. ENTER SECRET MESSAGE</div>
+        <textarea id="encodeMessage" placeholder="Type the message you want to hide..."></textarea>
+        <div class="counter" id="encodeCounter">0 characters</div>
+
+        <button class="primary" id="encodeBtn">🔒 ENCODE &amp; HIDE MESSAGE</button>
+        <div class="error" id="encodeError"></div>
+        <div class="stats" id="encodeStats"></div>
+      </div>
+
+      <div>
+        <div class="section-label">IMAGE PREVIEW</div>
+        <div class="preview" id="encodePreview"><span class="placeholder">No image loaded</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DECODE PANEL -->
+  <section id="decode" class="panel">
+    <div class="grid">
+      <div>
+        <div class="section-label">SELECT IMAGE TO DECODE</div>
+        <label class="dropzone" id="decodeDrop">
+          <input type="file" id="decodeFile" accept="image/png,image/*">
+          <div id="decodeDropText">Click or drop a stego image here</div>
+        </label>
+        <div class="filename" id="decodeFilename"></div>
+
+        <button class="primary" id="decodeBtn">🔓 DECODE &amp; REVEAL MESSAGE</button>
+        <div class="error" id="decodeError"></div>
+
+        <div class="section-label">EXTRACTED MESSAGE</div>
+        <div id="decodeOutput">Nothing decoded yet.</div>
+        <button class="primary" id="copyBtn" style="margin-top:10px;">📋 Copy to Clipboard</button>
+      </div>
+
+      <div>
+        <div class="section-label">IMAGE PREVIEW</div>
+        <div class="preview" id="decodePreview"><span class="placeholder">No image loaded</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT PANEL -->
+  <section id="about" class="panel">
+    <div class="about">
+      <h3>WHAT IS STEGANOGRAPHY?</h3>
+      <p>The art of hiding secret information inside ordinary-looking files — in this case, images.</p>
+
+      <h3>HOW IT WORKS (LSB METHOD)</h3>
+      <p>Every pixel has R, G, B values (0–255), each stored as 8 bits, e.g. <code>200 → 11001000</code>.
+      We change only the last bit (Least Significant Bit): <code>200 → 11001001 = 201</code>.
+      The change is invisible to the human eye. Encoding 1 bit per channel × 3 channels per pixel lets us hide large messages in any image.</p>
+
+      <h3>CAPACITY FORMULA</h3>
+      <p><code>Max characters = (width × height × 3) / 8</code></p>
+
+      <h3>IMPORTANT</h3>
+      <p>✅ Always use PNG images (lossless compression).<br>
+      ❌ JPEG will destroy hidden data (lossy compression) — downloaded output is always PNG.</p>
+
+      <h3>PROJECT STRUCTURE</h3>
+      <p><code>stego_engine.py</code> — core encoding/decoding logic<br>
+      <code>index.py</code> — Flask web app (replaces the desktop GUI) &amp; API routes<br>
+      <code>templates/index.html</code> — this interface</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>Runs entirely in-memory — no images are stored on the server.</footer>
+
+<script>
+// ── Tab switching ─────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).classList.add("active");
+  });
+});
+
+// ── Helpers ───────────────────────────────────
+function setupDropzone(dropId, inputId, onFile){
+  const drop = document.getElementById(dropId);
+  const input = document.getElementById(inputId);
+  drop.addEventListener("click", () => input.click());
+  input.addEventListener("change", () => { if(input.files[0]) onFile(input.files[0]); });
+  ["dragover","dragenter"].forEach(evt => drop.addEventListener(evt, e => {
+    e.preventDefault(); drop.classList.add("drag");
+  }));
+  ["dragleave","drop"].forEach(evt => drop.addEventListener(evt, e => {
+    e.preventDefault(); drop.classList.remove("drag");
+  }));
+  drop.addEventListener("drop", e => {
+    const file = e.dataTransfer.files[0];
+    if(file){ input.files = e.dataTransfer.files; onFile(file); }
+  });
+}
+
+function showPreview(containerId, file){
+  const el = document.getElementById(containerId);
+  const reader = new FileReader();
+  reader.onload = e => {
+    el.innerHTML = `<img src="${e.target.result}" alt="preview">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── ENCODE TAB ────────────────────────────────
+let encodeSelectedFile = null;
+
+setupDropzone("encodeDrop", "encodeFile", file => {
+  encodeSelectedFile = file;
+  document.getElementById("encodeFilename").textContent = file.name;
+  document.getElementById("encodeDropText").textContent = "Click or drop to replace image";
+  showPreview("encodePreview", file);
+
+  const fd = new FormData();
+  fd.append("image", file);
+  fetch("/api/capacity", { method:"POST", body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if(data.capacity !== undefined){
+        document.getElementById("encodeCapacity").textContent =
+          `Capacity: ~${data.capacity.toLocaleString()} characters`;
+      }
+    })
+    .catch(() => {});
+});
+
+const encodeMessageEl = document.getElementById("encodeMessage");
+encodeMessageEl.addEventListener("input", () => {
+  document.getElementById("encodeCounter").textContent =
+    `${encodeMessageEl.value.length.toLocaleString()} characters`;
+});
+
+document.getElementById("encodeBtn").addEventListener("click", () => {
+  const errorEl = document.getElementById("encodeError");
+  const statsEl = document.getElementById("encodeStats");
+  errorEl.textContent = "";
+  statsEl.innerHTML = "";
+
+  if(!encodeSelectedFile){
+    errorEl.textContent = "Please select a carrier image.";
+    return;
+  }
+  const message = encodeMessageEl.value.trim();
+  if(!message){
+    errorEl.textContent = "Please enter a secret message.";
+    return;
+  }
+
+  const btn = document.getElementById("encodeBtn");
+  btn.disabled = true;
+  btn.textContent = "Encoding...";
+
+  const fd = new FormData();
+  fd.append("image", encodeSelectedFile);
+  fd.append("message", message);
+
+  fetch("/api/encode", { method:"POST", body: fd })
+    .then(async res => {
+      if(!res.ok){
+        const data = await res.json();
+        throw new Error(data.error || "Encoding failed.");
+      }
+      const statsHeader = res.headers.get("X-Stats");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      document.getElementById("encodePreview").innerHTML =
+        `<img src="${url}" alt="encoded result">`;
+
+      if(statsHeader){
+        const [len, bits, cap, pct] = statsHeader.split("|");
+        statsEl.textContent =
+          `✓ Encoded successfully!\n  Message : ${len} chars\n  Used    : ${bits} bits\n  Usage   : ${pct}%`;
+      }
+      statsEl.innerHTML += `<br><a class="download-link" href="${url}" download="stego_output.png">⬇ Download stego_output.png</a>`;
+    })
+    .catch(err => { errorEl.textContent = err.message; })
+    .finally(() => { btn.disabled = false; btn.textContent = "🔒 ENCODE & HIDE MESSAGE"; });
+});
+
+// ── DECODE TAB ────────────────────────────────
+let decodeSelectedFile = null;
+
+setupDropzone("decodeDrop", "decodeFile", file => {
+  decodeSelectedFile = file;
+  document.getElementById("decodeFilename").textContent = file.name;
+  document.getElementById("decodeDropText").textContent = "Click or drop to replace image";
+  showPreview("decodePreview", file);
+});
+
+document.getElementById("decodeBtn").addEventListener("click", () => {
+  const errorEl = document.getElementById("decodeError");
+  const outputEl = document.getElementById("decodeOutput");
+  errorEl.textContent = "";
+
+  if(!decodeSelectedFile){
+    errorEl.textContent = "Please select an image to decode.";
+    return;
+  }
+
+  const btn = document.getElementById("decodeBtn");
+  btn.disabled = true;
+  btn.textContent = "Decoding...";
+
+  const fd = new FormData();
+  fd.append("image", decodeSelectedFile);
+
+  fetch("/api/decode", { method:"POST", body: fd })
+    .then(async res => {
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || "Decoding failed.");
+      outputEl.textContent = data.message || data.warning || "No hidden message found.";
+    })
+    .catch(err => { errorEl.textContent = err.message; })
+    .finally(() => { btn.disabled = false; btn.textContent = "🔓 DECODE & REVEAL MESSAGE"; });
+});
+
+document.getElementById("copyBtn").addEventListener("click", () => {
+  const text = document.getElementById("decodeOutput").textContent;
+  if(text && text !== "Nothing decoded yet."){
+    navigator.clipboard.writeText(text);
+  }
+});
+</script>
+
+</body>
+</html>
