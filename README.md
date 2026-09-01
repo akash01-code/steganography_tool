@@ -1,76 +1,42 @@
 # Steganography Tool — Web Edition
 
 Hide and reveal secret text messages inside PNG images using LSB
-(Least Significant Bit) steganography, now running as a Flask web app
-deployable on Vercel.
-
-## Why the GUI was replaced
-
-Your original `app_gui.py` used **Tkinter**, a desktop GUI toolkit that
-needs a local display — it cannot run on Vercel's serverless functions.
-This project keeps your exact encode/decode logic (`stego_engine.py`,
-untouched) and adds a Flask web app + browser UI on top, so the same
-tool now runs anywhere.
+(Least Significant Bit) steganography — a Flask web app deployable on
+Vercel with zero configuration.
 
 ## Project structure
 
 ```
 .
-├── api/
-│   ├── index.py           # Flask app + API routes (Vercel entrypoint)
-│   ├── stego_engine.py    # Core LSB encode/decode logic (your original)
-│   └── templates/
-│       └── index.html     # Web UI (encode / decode / about tabs)
-├── cli.py                 # Your original command-line script (local use only)
-├── requirements.txt       # Flask + Pillow
-├── vercel.json            # Vercel build/route config
-└── .vercelignore
+├── index.py            # Flask app + routes (Vercel entrypoint)
+├── stego_engine.py     # Core LSB encode/decode logic
+├── templates/
+│   └── index.html      # Web UI (encode / decode / about tabs)
+├── cli.py              # Original command-line script (local use only)
+├── requirements.txt
+└── vercel.json          # Optional: sets function timeout
 ```
 
-Everything runs **in-memory** — no uploaded images or outputs are ever
-written to disk on the server.
+Vercel auto-detects the Flask `app` instance in `index.py` at the
+project root — no custom build/route config needed.
 
 ## Deploy to Vercel
 
-**Option A — Vercel dashboard**
-1. Push this folder to a GitHub repo.
-2. Go to [vercel.com/new](https://vercel.com/new) and import the repo.
-3. Vercel auto-detects `vercel.json` and the Python runtime — click **Deploy**.
+Push to GitHub, then import the repo at https://vercel.com/new.
+Vercel detects Flask automatically and deploys.
 
-**Option B — Vercel CLI**
+Or via CLI:
 ```bash
 npm i -g vercel
-cd stego-vercel
-vercel        # follow prompts, deploys a preview
-vercel --prod # deploy to production
+vercel --prod
 ```
-
-No environment variables or extra configuration needed.
 
 ## Run locally
 
 ```bash
-cd stego-vercel
-python -m venv venv && source venv/bin/activate   # optional
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-python api/index.py
+python index.py
 ```
 
-Visit `http://localhost:5000`.
-
-## API endpoints
-
-| Method | Path            | Body (multipart/form-data)      | Returns                          |
-|--------|-----------------|----------------------------------|-----------------------------------|
-| POST   | `/api/capacity` | `image`                          | `{ "capacity": <max chars> }`     |
-| POST   | `/api/encode`   | `image`, `message`                | PNG file download + `X-Stats` header |
-| POST   | `/api/decode`   | `image`                          | `{ "message": "..." }`            |
-
-## Notes
-
-- Always use **PNG** carrier images — JPEG's lossy compression destroys
-  hidden data (same rule as your original tool).
-- Upload limit is 10 MB per image (adjustable in `api/index.py` via
-  `MAX_CONTENT_LENGTH`).
-- Vercel's free tier serverless functions have execution/time limits;
-  very large images may be slow to process pixel-by-pixel in Python.
+Visit http://localhost:5000
