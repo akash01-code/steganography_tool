@@ -1,123 +1,58 @@
-"""
-stego_engine.py
-───────────────
-Core LSB (Least Significant Bit) steganography logic.
-Handles encoding and decoding of secret messages inside PNG images.
-
-Works with either file paths OR file-like objects (BytesIO), since
-Image.open() / Image.save() from Pillow support both.
-"""
-
+"""LSB steganography engine. Paths or file-like objects both work (Pillow takes either)."""
 from PIL import Image
 
-DELIMITER = "<<END>>"   # Marks the end of a hidden message
+HEADER = 4  # bytes: big-endian message length, replaces the <<END>> delimiter
 
 
-# ──────────────────────────────────────────────
-#  HELPERS
-# ──────────────────────────────────────────────
-
-def text_to_binary(text: str) -> str:
-    """Convert a string to a binary string (8 bits per character)."""
-    return "".join(format(ord(char), "08b") for char in text)
+def get_image_capacity(src) -> int:
+    """Max message size in bytes."""
+    w, h = Image.open(src).size
+    return w * h * 3 // 8 - HEADER
 
 
-def binary_to_text(binary: str) -> str:
-    """Convert a binary string back to readable text."""
-    chars = [binary[i:i + 8] for i in range(0, len(binary), 8)]
-    return "".join(chr(int(b, 2)) for b in chars if len(b) == 8)
-
-
-def get_image_capacity(image_source) -> int:
-    """Return max number of characters an image can hide."""
-    img = Image.open(image_source).convert("RGB")
-    w, h = img.size
-    return (w * h * 3) // 8 - len(DELIMITER)
-
-
-# ──────────────────────────────────────────────
-#  ENCODE
-# ──────────────────────────────────────────────
-
-def encode(image_source, message: str, output_target) -> dict:
-    """
-    Hide a secret message inside an image.
-
-    Args:
-        image_source : Source image path OR file-like object (PNG recommended)
-        message      : Secret text to embed
-        output_target: Destination path OR file-like object (e.g. BytesIO)
-
-    Returns:
-        dict with encoding stats
-    """
-    img = Image.open(image_source).convert("RGB")
-    pixels = list(img.getdata())
-
-    full_message = message + DELIMITER
-    binary_msg = text_to_binary(full_message)
-    total_bits = len(binary_msg)
-    max_capacity = len(pixels) * 3
-
-    if total_bits > max_capacity:
+def encode(src, message, out) -> dict:
+    data = message.encode()
+    data = len(data).to_bytes(HEADER, "big") + data
+    img = Image.open(src).convert("RGB")
+    px = bytearray(img.tobytes())
+    bits = len(data) * 8
+    if bits > len(px):
         raise ValueError(
-            f"Message too long! Max ≈ {max_capacity // 8 - len(DELIMITER)} characters "
-            f"for this image, but got {len(message)} characters."
+            f"Message too long! Max ≈ {len(px) // 8 - HEADER} bytes for this image, "
+            f"got {len(data) - HEADER}."
         )
-
-    encoded_pixels = []
-    bit_index = 0
-
-    for pixel in pixels:
-        channels = list(pixel)
-        new_channels = []
-        for ch in channels:
-            if bit_index < total_bits:
-                new_ch = (ch & 0b11111110) | int(binary_msg[bit_index])
-                new_channels.append(new_ch)
-                bit_index += 1
-            else:
-                new_channels.append(ch)
-        encoded_pixels.append(tuple(new_channels))
-
-    out_img = Image.new("RGB", img.size)
-    out_img.putdata(encoded_pixels)
-    out_img.save(output_target, format="PNG")
-
+    for i in range(bits):
+        px[i] = (px[i] & 0xFE) | (data[i // 8] >> (7 - i % 8)) & 1
+    Image.frombytes("RGB", img.size, bytes(px)).save(out, format="PNG")
     return {
         "message_length": len(message),
-        "bits_used": total_bits,
-        "max_capacity": max_capacity,
-        "utilisation_pct": round(total_bits / max_capacity * 100, 2),
+        "bits_used": bits,
+        "max_capacity": len(px),
+        "utilisation_pct": round(bits / len(px) * 100, 2),
     }
 
 
-# ──────────────────────────────────────────────
-#  DECODE
-# ──────────────────────────────────────────────
-
-def decode(image_source) -> str:
-    """
-    Extract a hidden message from a stego image.
-
-    Args:
-        image_source : Image path OR file-like object containing a hidden message
-
-    Returns:
-        The secret message string, or an empty string if none found.
-    """
-    img = Image.open(image_source).convert("RGB")
-    pixels = list(img.getdata())
-
-    binary_data = []
-    for pixel in pixels:
-        for channel in pixel:
-            binary_data.append(str(channel & 1))
-    binary_data = "".join(binary_data)
-
-    decoded = binary_to_text(binary_data)
-
-    if DELIMITER in decoded:
-        return decoded.split(DELIMITER)[0]
-    else:
+def decode(src) -> str:
+    """Hidden message, or "" if none found."""
+    px = Image.open(src).convert("RGB").tobytes()
+    read = lambda start, n: bytes(
+        int("".join(str(px[(start + k) * 8 + j] & 1) for j in range(8)), 2) for k in range(n)
+    )
+    n = int.from_bytes(read(0, HEADER), "big")
+    if not n or n * 8 > len(px) - HEADER * 8:
         return ""
+    try:
+        return read(HEADER, n).decode()
+    except UnicodeDecodeError:  # random image whose LSBs happened to look like a small length
+        return ""
+
+
+if __name__ == "__main__":
+    import io
+    src = io.BytesIO()
+    Image.new("RGB", (50, 50), (10, 200, 30)).save(src, format="PNG")
+    out, msg = io.BytesIO(), "Hello 🕵️ <<END>> still fine"
+    encode(io.BytesIO(src.getvalue()), msg, out)
+    assert decode(io.BytesIO(out.getvalue())) == msg
+    assert decode(io.BytesIO(src.getvalue())) == ""  # clean image → nothing found
+    print("ok")
